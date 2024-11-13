@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Data Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center">Dashboard Data Suhu</h2>
+        <button id="loadDataBtn" class="btn btn-primary mt-3 mb-4">Load Data</button>
+        
+        <!-- Cards untuk Data Suhu Max, Min, dan Rata-Rata -->
+        <div class="row text-center mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Suhu Max</h5>
+                        <p id="suhuMax" class="card-text display-6"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Suhu Min</h5>
+                        <p id="suhuMin" class="card-text display-6"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Suhu Rata-Rata</h5>
+                        <p id="suhuRata" class="card-text display-6"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafik Data Suhu -->
+        <div class="row">
+            <div class="col-md-12">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data JSON dan Parsing Result -->
+        <div id="dataDisplay" class="mt-4">
+            <h5>Data JSON:</h5>
+            <pre id="jsonData" class="bg-light p-3"></pre>
+            <h5>Parsing Result:</h5>
+            <ul id="parsedData" class="list-group mt-3"></ul>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("loadDataBtn").addEventListener("click", function() {
+            fetch("http://127.0.0.1:5000/data")
+                .then(response => response.json())
+                .then(data => {
+                    // Menampilkan data JSON mentah
+                    document.getElementById("jsonData").textContent = JSON.stringify(data, null, 2);
+
+                    // Menampilkan data pada Cards
+                    document.getElementById("suhuMax").textContent = `${data.suhumax} °C`;
+                    document.getElementById("suhuMin").textContent = `${data.suhumin} °C`;
+                    document.getElementById("suhuRata").textContent = `${data.suhurata} °C`;
+
+                    // Parsing data JSON dan menampilkannya di UI
+                    let parsedData = document.getElementById("parsedData");
+                    parsedData.innerHTML = '';
+
+                    // Parsing suhu maksimum, minimum, dan rata-rata
+                    parsedData.innerHTML += `<li class="list-group-item">Suhu Max: ${data.suhumax}</li>`;
+                    parsedData.innerHTML += `<li class="list-group-item">Suhu Min: ${data.suhumin}</li>`;
+                    parsedData.innerHTML += `<li class="list-group-item">Suhu Rata-Rata: ${data.suhurata}</li>`;
+
+                    // Parsing nilai_suhu_max_humid_max
+                    data.nilai_suhu_max_humid_max.forEach(item => {
+                        parsedData.innerHTML += `
+                            <li class="list-group-item">
+                                <strong>ID:</strong> ${item.idx} |
+                                <strong>Suhu:</strong> ${item.suhu} |
+                                <strong>Humid:</strong> ${item.humid} |
+                                <strong>Kecerahan:</strong> ${item.kecerahan} |
+                                <strong>Timestamp:</strong> ${item.timestamp}
+                            </li>`;
+                    });
+
+                    // Parsing month_year_max
+                    data.month_year_max.forEach(item => {
+                        parsedData.innerHTML += `
+                            <li class="list-group-item">
+                                <strong>Bulan-Tahun Max:</strong> ${item.month_year}
+                            </li>`;
+                    });
+
+                    // Memuat data ke dalam grafik suhu
+                    loadChart(data);
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        function loadChart(data) {
+            const ctx = document.getElementById("temperatureChart").getContext("2d");
+            
+            // Data untuk grafik
+            const labels = data.nilai_suhu_max_humid_max.map(item => item.timestamp);
+            const suhuData = data.nilai_suhu_max_humid_max.map(item => item.suhu);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Suhu (°C)',
+                        data: suhuData,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Timestamp'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Suhu (°C)'
+                            },
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
